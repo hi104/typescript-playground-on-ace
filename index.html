@@ -1,0 +1,91 @@
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+	<title>Typescript playground on ace editor</title>
+	<meta name="description" content="Typescript playground on ace editor" /><meta>
+    <link type="text/css" rel="stylesheet" href="bootstrap.min.css" />
+    <link type="text/css" rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+
+    <div class="fluid-container" style="padding:5px">
+      <div>
+        <h1> TypeScript PlayGround on Ace Editor</h1>
+        <div style="padding:10px">
+          <p>
+            <a href="http://www.typescriptlang.org/Playground/">typescript playground </a> build on
+            <a href="http://ace.ajax.org">ace editor</a>.
+          </p>
+          <p>
+            <ul>
+              <li>shortcut key [Ctrl-Space] : AutoComplete</li>
+            </ul>
+          </p>
+        </div>
+      </div>
+
+      <div class="editor-area">
+        <div class="warp-container">
+          <div class="langauge-title" style="float:left">
+            <div style="float:left">
+              <h2>typescript</h2>
+            </div>
+            <div style="float:left;padding-top:5px;padding-left:20px">
+              <select id="select-sample">
+                <option selected="selected" value="greeter.ts">Walkthrough:Classes</option>
+                <option value="raytracer.ts">Raytracer</option>
+                <option value="animal.ts">Simple inheritance</option>
+
+              </select>
+            </div>
+            <div style="clear:both"></div>
+          </div>
+          <div class="editor-container">
+            <div id="editor">
+            </div>
+          </div>
+        </div>
+
+        <div class="warp-container">
+          <div class="langauge-title" style="float:right">
+            <!-- <div style="float:left"> -->
+            <!--   <div id="javascript-run">Run</div> -->
+            <!-- </div> -->
+            <div style="float:left;margin-left:10px">
+              <h2>javascript</h2>
+            </div>
+          </div>
+          <div style="clear:both"></div>
+          <div class="editor-container" style="float:right">
+            <div id="output">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer" style="padding:5px;">
+        <p>source code on <a href="https://github.com/hi104/typescript-playground-on-ace">github</a></p>
+      </div>
+    </div>
+
+  </body>
+
+  <script type="text/javascript">
+    var exports ={};
+  </script>
+
+  <script type="text/javascript" src="./javascripts/lib/jquery-1.8.2.min.js"></script>
+  <script type="text/javascript" src="./javascripts/lib/ace/ace.js"></script>
+
+  <script type="text/javascript" src="./javascripts/lib/typescript/typescriptServices.js"></script>
+
+  <script type="text/javascript" src="./javascripts/lightHarness.js"></script>
+  <script type="text/javascript" src="./javascripts/autoComplete.js"></script>
+  <script type="text/javascript" src="./javascripts/documentPositionUtil.js"></script>
+  <script type="text/javascript" src="./javascripts/editorPosition.js"></script>
+  <script type="text/javascript" src="./javascripts/compilationService.js"></script>
+  <script type="text/javascript" src="./javascripts/fileService.js"></script>
+  <script type="text/javascript" src="./javascripts/autoCompleteView.js"></script>
+  <script type="text/javascript" src="./javascripts/main.js"></script>
+
+</html>

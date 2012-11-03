@@ -1,0 +1,129 @@
+body{
+
+}
+
+.warp-container{
+    float:left;
+    width:49%;
+}
+
+.editor-container {
+    position:relative;
+    /* padding:20px; */
+    height:100%;
+    width:99%;
+    float:left;
+}
+#editor {
+    position:absolute;
+    max-height:10000px;
+    top: 6px;
+    right: 0;
+    bottom: 0;
+    left: 0;
+}
+
+#output {
+    position:absolute;
+    max-height:10000;
+    top: 6px;
+    right: 0;
+    bottom: 0;
+    left: 10;
+}
+
+.editor-area{
+    height: auto;
+    padding-bottom: 50px;
+    height:70%;
+    /* margin-bottom:20px; */
+}
+
+.typescript-ref{
+    position: absolute;
+    border:1px solid white;
+    opacity:0.7;
+}
+
+.langauge-title h2{
+    padding: 5px 10px;
+    font-size:14pt;
+    background: #eee;
+    border:1px solid black;
+    display:block;
+    margin:0px;
+    height:30px;
+    line-height:30px;
+}
+#javascript-run {
+    margin:0px;
+    margin-top:20px;
+    padding:5px;
+    background:#999;
+    color:white;
+}
+
+.ace_autocomplete{
+    height:226px;
+    background:white;
+    overflow:hidden;
+    border:1px solid #ccc;
+}
+
+.ace_autocomplete ul{
+    width:400px;
+    margin:0px;
+    padding:2px;
+}
+
+.ace_autocomplete li:hover{
+
+}
+
+.ace_autocomplete li{
+    padding:1px;
+    line-height:1.2em;
+    height:1.2em;
+    overflow:hidden;
+}
+
+.ace_autocomplete_selected{
+   background:#eee;
+}
+
+.ace_autocomplete_selected .label-name{
+    font-weight:bold;
+}
+
+.label-kind{
+    background:#666;
+    color:white;
+    padding:0px 3px;
+    margin-right:3px;
+}
+
+.label-kind-property{
+    background:green;
+}
+
+.label-kind-method{
+    background:blue;
+}
+
+.label-kind-interface{
+    background:#666;
+}
+
+.label-kind-variable{
+    background:orangered;
+}
+
+.label-type{
+    padding-left:10px;
+    color:blue;
+    visibility:hidden;
+}
+
+.ace_autocomplete_selected .label-type{
+    visibility:visible;
+}
