@@ -17,7 +17,8 @@ var outputEditor = null;
 var typeCompilationService = null;
 var docUpdateCount = 0;
 var typeScriptLS =  new TypeScriptLS();
-var serviceShim = typeScriptLS.getLanguageService();
+var ServicesFactory = new Services.TypeScriptServicesFactory();
+var serviceShim = ServicesFactory.createLanguageServiceShim(typeScriptLS);
 
 var selectFileName = "";
 
