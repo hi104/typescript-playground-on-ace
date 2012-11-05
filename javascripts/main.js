@@ -224,6 +224,15 @@ $(function(){
         originalTextInput.call(editor, text);
         if(text == "."){
             editor.commands.exec("autoComplete");
+
+        }else if (editor.getSession().getDocument().isNewLine(text)) {
+            var lineNumber = editor.getCursorPosition().row;
+            var option = new Services.EditorOptions();
+            option.NewLineCharacter = "\n";
+            var indent = serviceShim.languageService.getSmartIndentAtLineNumber(selectFileName, lineNumber, option);
+            if(indent > 0) {
+                editor.commands.exec("inserttext", editor, {text:" ", times:indent});
+            }
         }
     };
 
