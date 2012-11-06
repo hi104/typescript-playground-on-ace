@@ -81,7 +81,7 @@ function syncTypeScriptServiceContent(script, aceChangeEvent){
             return line+ '\n'; //TODO newline hard code
         }).join('');
         editLanguageService(script,new Services.TextEdit(start , start, text));
-
+        
     }else if (action == "removeText") {
         var end = start + data.text.length;
         editLanguageService(script, new Services.TextEdit(start, end, ""));
@@ -140,7 +140,7 @@ function languageServiceIndent(){
             editor.commands.exec("inserttext", editor, {text:" ", times:indent});
         }
 
-        if( cursor.column > wordLen){
+        if( cursor.column > wordLen){ 
             cursor.column += indent;
         }else{
             cursor.column = indent + wordLen;
@@ -223,16 +223,10 @@ function workerOnCreate(func, timeout){
 }
 
 function javascriptRun(){
-    var d = window.open("", "_blank");
-    d.document.open();
-
-    d.document.write('<html><head></head>'
-                     + '<body>'
-                     + '<script type="text/javascript">'
-                     + Compile(editor.getSession().doc.getValue())
-                     + '</script>'
-                     + '</body></html>');
-    d.document.close();
+    var external = window.open();
+    var script = external.window.document.createElement("script");
+    script.textContent = outputEditor.getSession().doc.getValue();
+    external.window.document.body.appendChild(script);
 }
 
 $(function(){
@@ -273,7 +267,7 @@ $(function(){
     //     name: "indent",
     //     bindKey: "Tab",
     //     exec: function(editor) {
-    //         languageServiceIndent();
+    //         languageServiceIndent(); 
     //     },
     //     multiSelectAction: "forEach"
     // }]);
@@ -314,7 +308,7 @@ $(function(){
 
         ["typescripts/lib.d.ts"].forEach(function(libname){
             appFileService.readFile(libname, function(content){
-                var params = {
+                var params = { 
                     data: {
                     name:libname,
                     content:content.replace(/\r\n?/g,"\n")}
