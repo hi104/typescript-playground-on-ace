@@ -1,6 +1,6 @@
 var AceRange = require('ace/range').Range;
 var AutoComplete = require('autocomplete').AutoComplete;
-
+var lang = require("ace/lib/lang");
 var EditorPosition =  require('EditorPosition').EditorPosition;
 var CompilationService =  require('CompilationService').CompilationService;
 var FileService =  require('FileService').FileService;
@@ -85,7 +85,6 @@ function syncTypeScriptServiceContent(script, aceChangeEvent){
     }else if (action == "removeText") {
         var end = start + data.text.length;
         editLanguageService(script, new Services.TextEdit(start, end, ""));
-
     }else if (action == "removeLines"){
         var len = aceEditorPosition.getLinesChars(data.lines);
         var end = start + len;
@@ -107,6 +106,49 @@ function onChangeCursor(e){
         }
     }
 };
+
+function languageServiceIndent(){
+    var cursor = editor.getCursorPosition();
+    var lineNumber = cursor.row;
+
+    var text  = editor.session.getLine(lineNumber);
+    var matches = text.match(/^[\t ]*/);
+    var preIndent = 0;
+    var wordLen = 0;
+
+    if(matches){
+        wordLen = matches[0].length;
+        for(var i = 0; i < matches[0].length; i++){
+            var elm = matches[0].charAt(i);
+            var spaceLen = (elm == " ") ? 1: editor.session.getTabSize();
+            preIndent += spaceLen;
+        };
+    }
+
+    var option = new Services.EditorOptions();
+    option.NewLineCharacter = "\n";
+
+    var smartIndent = serviceShim.languageService.getSmartIndentAtLineNumber(selectFileName, lineNumber, option);
+
+    if(preIndent > smartIndent){
+        editor.indent();
+    }else{
+        var indent = smartIndent - preIndent;
+
+        if(indent > 0){
+            editor.getSelection().moveCursorLineStart();
+            editor.commands.exec("inserttext", editor, {text:" ", times:indent});
+        }
+
+        if( cursor.column > wordLen){
+            cursor.column += indent;
+        }else{
+            cursor.column = indent + wordLen;
+        }
+
+        editor.getSelection().moveCursorToPosition(cursor);
+    }
+}
 
 function refactor(){
     var references = serviceShim.languageService.getOccurrencesAtPosition(selectFileName, aceEditorPosition.getCurrentCharPosition());
@@ -180,6 +222,19 @@ function workerOnCreate(func, timeout){
     }
 }
 
+function javascriptRun(){
+    var d = window.open("", "_blank");
+    d.document.open();
+
+    d.document.write('<html><head></head>'
+                     + '<body>'
+                     + '<script type="text/javascript">'
+                     + Compile(editor.getSession().doc.getValue())
+                     + '</script>'
+                     + '</body></html>');
+    d.document.close();
+}
+
 $(function(){
     appFileService = new FileService($);
     editor = ace.edit("editor");
@@ -213,6 +268,15 @@ $(function(){
             refactor();
         }
     }]);
+
+    // editor.commands.addCommands([{
+    //     name: "indent",
+    //     bindKey: "Tab",
+    //     exec: function(editor) {
+    //         languageServiceIndent();
+    //     },
+    //     multiSelectAction: "forEach"
+    // }]);
 
     aceEditorPosition = new EditorPosition(editor);
     typeCompilationService = new CompilationService(editor, serviceShim);
@@ -250,7 +314,7 @@ $(function(){
 
         ["typescripts/lib.d.ts"].forEach(function(libname){
             appFileService.readFile(libname, function(content){
-                var params = { 
+                var params = {
                     data: {
                     name:libname,
                     content:content.replace(/\r\n?/g,"\n")}
@@ -259,6 +323,10 @@ $(function(){
             });
         });
     }, 100);
+
+    $("#javascript-run").click(function(e){
+        javascriptRun();
+    });
 
     $("#select-sample").change(function(e){
         var path = "samples/" + $(this).val();
