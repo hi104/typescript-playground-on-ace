@@ -22,27 +22,17 @@
       };
 
       CompilationService.prototype.getCursorCompilation = function(script, cursor) {
-        var isMemberCompletion, matches, pos, range, text;
+        var isMemberCompletion, matches, pos, text;
         pos = this.editorPos.getPositionChars(cursor);
-        range = {
-          start: {
-            row: cursor.row,
-            column: 0
-          },
-          end: {
-            row: cursor.row,
-            column: cursor.column
-          }
-        };
-        text = editor.getSession().getTextRange(range);
+        text = this.editor.session.getLine(cursor.row).slice(0, cursor.column);
         isMemberCompletion = false;
-        matches = text.match(/\.([a-zA-Z_\-]*$)/);
+        matches = text.match(/\.([a-zA-Z_0-9\$]*$)/);
         if (matches && matches.length > 0) {
           this.matchText = matches[1];
           isMemberCompletion = true;
           pos -= this.matchText.length;
         } else {
-          matches = text.match(/[a-zA-Z_\-]*$/);
+          matches = text.match(/[a-zA-Z_0-9\$]*$/);
           this.matchText = matches[0];
         }
         return this.getCompilation(script, pos, isMemberCompletion);

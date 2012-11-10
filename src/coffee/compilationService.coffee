@@ -12,23 +12,17 @@ define('CompilationService',  ['require', 'exports', 'module', 'EditorPosition']
 
         getCursorCompilation:(script, cursor) =>
             pos = @editorPos.getPositionChars(cursor)
-
-            range ={
-                start:{ row: cursor.row, column:0 },
-                end:{ row: cursor.row, column:cursor.column }
-            }
-
-            text  = editor.getSession().getTextRange(range)
+            text  = @editor.session.getLine(cursor.row).slice(0, cursor.column)
 
             isMemberCompletion = false
-            matches = text.match(/\.([a-zA-Z_\-]*$)/)
+            matches = text.match(/\.([a-zA-Z_0-9\$]*$)/)
 
             if (matches && matches.length > 0)
                 @matchText = matches[1]
                 isMemberCompletion = true
                 pos -= @matchText.length
             else
-                matches = text.match(/[a-zA-Z_\-]*$/)
+                matches = text.match(/[a-zA-Z_0-9\$]*$/)
                 @matchText = matches[0]
 
             @getCompilation(script, pos, isMemberCompletion)
