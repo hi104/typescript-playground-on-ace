@@ -54,12 +54,15 @@ oop.inherits(Mode, TextMode);
     this.createWorker = function(session) {
         var worker = new WorkerClient(["ace"], "ace/mode/typescript_worker", "TypeScriptWorker");
         worker.attachToDocument(session.getDocument());
+
         worker.on("terminate", function() {
             session.clearAnnotations();
         });
 
         worker.on("compileErrors", function(results) {
             session.setAnnotations(results.data);
+            session._emit("compileErrors", {data: results.data});
+
         });
 
         worker.on("compiled", function(result) {
@@ -148,17 +151,14 @@ var JavaScriptHighlightRules = function() {
             "isNaN|parseFloat|parseInt|"                                               +
             "JSON|Math|"                                                               + // Other
             "this|arguments|prototype|window|document"                                 , // Pseudo
-        "invalid.deprecated":
-            "__parent__|__count__|escape|unescape|with|__proto__",
         "keyword":
             "const|yield|import|get|set|" +
             "break|case|catch|continue|default|delete|do|else|finally|for|function|" +
-            "if|in|instanceof|new|return|switch|throw|try|typeof|let|var|while|with|debugger",
+            "if|in|instanceof|new|return|switch|throw|try|typeof|let|var|while|with|debugger|" +
+            "__parent__|__count__|escape|unescape|with|__proto__|" +
+            "class|enum|extends|super|export|implements|private|public|interface|package|protected|static",
         "storage.type":
             "const|let|var|function",
-        "invalid.illegal":
-            "class|enum|extends|super|export|implements|private|" +
-            "public|interface|package|protected|static",
         "constant.language":
             "null|Infinity|NaN|undefined",
         "support.function":

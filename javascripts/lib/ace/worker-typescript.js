@@ -1,5 +1,8 @@
 "no use strict";
 
+if (typeof window != "undefined" && window.document)
+    throw "atempt to load ace worker into main window instead of webWorker";
+
 var console = {
     log: function() {
         var msgs = Array.prototype.slice.call(arguments, 0);
@@ -135,7 +138,10 @@ var sender;
 onmessage = function(e) {
     var msg = e.data;
     if (msg.command) {
-        main[msg.command].apply(main, msg.args);
+        if (main[msg.command])
+            main[msg.command].apply(main, msg.args);
+        else
+            throw new Error("Unknown command:" + msg.command);
     }
     else if (msg.init) {        
         initBaseUrls(msg.tlns);
@@ -970,157 +976,160 @@ exports.implement = function(proto, mixin) {
 });
 define('ace/mode/typescript_worker', ['require', 'exports', 'module' , 'ace/lib/oop', 'ace/worker/mirror', 'ace/lib/lang', 'ace/document', 'ace/mode/typescript/DocumentPositionUtil', 'ace/mode/typescript/typescriptServices', 'ace/mode/typescript/lightHarness'], function(require, exports, module) {
 
-var oop = require("../lib/oop");
-var Mirror = require("../worker/mirror").Mirror;
-var lang = require("../lib/lang");
-var Document = require("../document").Document;
-var DocumentPositionUtil = require('./typescript/DocumentPositionUtil').DocumentPositionUtil;
-var Services = require('./typescript/typescriptServices').Services;
-var TypeScript = require('./typescript/typescriptServices').TypeScript;
-var TypeScriptLS = require('./typescript/lightHarness').TypeScriptLS;
 
-var TypeScriptWorker = exports.TypeScriptWorker = function(sender) {
-    this.sender = sender;
-    var doc = this.doc = new Document("");
+    var oop = require("../lib/oop");
+    var Mirror = require("../worker/mirror").Mirror;
+    var lang = require("../lib/lang");
+    var Document = require("../document").Document;
+    var DocumentPositionUtil = require('./typescript/DocumentPositionUtil').DocumentPositionUtil;
+    var Services = require('./typescript/typescriptServices').Services;
+    var TypeScript = require('./typescript/typescriptServices').TypeScript;
+    var TypeScriptLS = require('./typescript/lightHarness').TypeScriptLS;
 
-    var deferredUpdate = this.deferredUpdate = lang.deferredCall(this.onUpdate.bind(this));
+    var TypeScriptWorker = exports.TypeScriptWorker = function(sender) {
+        this.sender = sender;
+        var doc = this.doc = new Document("");
 
-    this.typeScriptLS =  new TypeScriptLS();
-    this.ServicesFactory = new Services.TypeScriptServicesFactory();
-    this.serviceShim = this.ServicesFactory.createLanguageServiceShim(this.typeScriptLS);
-    this.languageService = this.serviceShim.languageService;
+        var deferredUpdate = this.deferredUpdate = lang.deferredCall(this.onUpdate.bind(this));
 
-
-    var self = this;
-    sender.on("change", function(e) {
-        doc.applyDeltas([e.data]);
-        deferredUpdate.schedule(self.$timeout);
-    });
-
-    sender.on("addLibrary", function(e) {
-        self.addlibrary(e.data.name , e.data.content);
-    });
+        this.typeScriptLS =  new TypeScriptLS();
+        this.ServicesFactory = new Services.TypeScriptServicesFactory();
+        this.serviceShim = this.ServicesFactory.createLanguageServiceShim(this.typeScriptLS);
+        this.languageService = this.serviceShim.languageService;
 
 
-
-    this.setOptions();
-    sender.emit("initAfter");
-};
-
-oop.inherits(TypeScriptWorker, Mirror);
-
-(function() {
-    var proto = this;
-    this.setOptions = function(options) {
-        this.options = options || {
-        };
-    };
-    this.changeOptions = function(newOptions) {
-        oop.mixin(this.options, newOptions);
-        this.deferredUpdate.schedule(100);
-    };
-
-    this.addlibrary = function(name, content) {
-        this.typeScriptLS.addScript(name, content.replace(/\r\n?/g,"\n"), true);
-    };
-
-
-
-    this.getCompletionsAtPosition = function(fileName, pos, isMemberCompletion, id){
-        var ret = this.languageService.getCompletionsAtPosition(fileName, pos, isMemberCompletion);
-        this.sender.callback(ret, id);
-    };
-
-    ["getTypeAtPosition",
-     "getSignatureAtPosition",
-     "getDefinitionAtPosition"].forEach(function(elm){
-        proto[elm] = function(fileName, pos,  id) {
-            var ret = this.languageService[elm](fileName, pos);
-            this.sender.callback(ret, id);
-        };
-    });
-
-    ["getReferencesAtPosition",
-     "getOccurrencesAtPosition",
-     "getImplementorsAtPosition"].forEach(function(elm){
-
-        proto[elm] = function(fileName, pos,  id) {
-            var referenceEntries = this.languageService[elm](fileName, pos);
-            var ret = referenceEntries.map(function (ref) {
-                return {
-                    unitIndex: ref.unitIndex,
-                    minChar: ref.ast.minChar,
-                    limChar: ref.ast.limChar
-                };
-            });
-            this.sender.callback(ret, id);
-        };
-    });
-
-    ["getNavigateToItems",
-     "getScriptLexicalStructure",
-     "getOutliningRegions "].forEach(function(elm){
-        proto[elm] = function(value, id) {
-            var navs = this.languageService[elm](value);
-            this.sender.callback(navs, id);
-        };
-    });
-
-
-    this.compile = function (typeScriptContent){
-        var output = "";
-
-        var outfile = {
-            Write: function (s) {
-                output  += s;
-            },
-            WriteLine: function (s) {
-                output  += s + "\n";
-            },
-            Close: function () {
-            }
-        };
-
-        var outerr = {
-            Write: function (s) {
-            },
-            WriteLine: function (s) {
-            },
-            Close: function () {
-            }
-        };
-        var compiler = new TypeScript.TypeScriptCompiler(outfile, outerr, new TypeScript.NullLogger(), new TypeScript.CompilationSettings());
-        compiler.addUnit(typeScriptContent, "output.js", false);
-        compiler.typeCheck();
-        compiler.emit(false, function (name) {
-
-        });
-
-        return output;
-    };
-
-    this.onUpdate = function() {
-        this.typeScriptLS.updateScript("temp.ts",this.doc.getValue() , false);
-        var errors = this.serviceShim.languageService.getScriptErrors("temp.ts", 100);
-        var annotations = [];
         var self = this;
-        this.sender.emit("compiled", this.compile(this.doc.getValue()));
-
-        errors.forEach(function(error){
-            var pos = DocumentPositionUtil.getPosition(self.doc, error.minChar);
-            annotations.push({
-                row: pos.row,
-                column: pos.column,
-                text: error.message,
-                type: "error",
-                raw: error.message
-            });
+        sender.on("change", function(e) {
+            doc.applyDeltas([e.data]);
+            deferredUpdate.schedule(self.$timeout);
         });
 
-        this.sender.emit("compileErrors", annotations);
+        sender.on("addLibrary", function(e) {
+            self.addlibrary(e.data.name , e.data.content);
+        });
+
+
+
+        this.setOptions();
+        sender.emit("initAfter");
     };
 
-}).call(TypeScriptWorker.prototype);
+    oop.inherits(TypeScriptWorker, Mirror);
+
+    (function() {
+        var proto = this;
+        this.setOptions = function(options) {
+            this.options = options || {
+            };
+        };
+        this.changeOptions = function(newOptions) {
+            oop.mixin(this.options, newOptions);
+            this.deferredUpdate.schedule(100);
+        };
+
+        this.addlibrary = function(name, content) {
+            this.typeScriptLS.addScript(name, content.replace(/\r\n?/g,"\n"), true);
+        };
+
+
+
+        this.getCompletionsAtPosition = function(fileName, pos, isMemberCompletion, id){
+            var ret = this.languageService.getCompletionsAtPosition(fileName, pos, isMemberCompletion);
+            this.sender.callback(ret, id);
+        };
+
+        ["getTypeAtPosition",
+         "getSignatureAtPosition",
+         "getDefinitionAtPosition"].forEach(function(elm){
+             proto[elm] = function(fileName, pos,  id) {
+                 var ret = this.languageService[elm](fileName, pos);
+                 this.sender.callback(ret, id);
+             };
+         });
+
+        ["getReferencesAtPosition",
+         "getOccurrencesAtPosition",
+         "getImplementorsAtPosition"].forEach(function(elm){
+
+             proto[elm] = function(fileName, pos,  id) {
+                 var referenceEntries = this.languageService[elm](fileName, pos);
+                 var ret = referenceEntries.map(function (ref) {
+                     return {
+                         unitIndex: ref.unitIndex,
+                         minChar: ref.ast.minChar,
+                         limChar: ref.ast.limChar
+                     };
+                 });
+                 this.sender.callback(ret, id);
+             };
+         });
+
+        ["getNavigateToItems",
+         "getScriptLexicalStructure",
+         "getOutliningRegions "].forEach(function(elm){
+             proto[elm] = function(value, id) {
+                 var navs = this.languageService[elm](value);
+                 this.sender.callback(navs, id);
+             };
+         });
+
+
+        this.compile = function (typeScriptContent){
+            var output = "";
+
+            var outfile = {
+                Write: function (s) {
+                    output  += s;
+                },
+                WriteLine: function (s) {
+                    output  += s + "\n";
+                },
+                Close: function () {
+                }
+            };
+
+            var outerr = {
+                Write: function (s) {
+                },
+                WriteLine: function (s) {
+                },
+                Close: function () {
+                }
+            };
+            var compiler = new TypeScript.TypeScriptCompiler(outfile, outerr, new TypeScript.NullLogger(), new TypeScript.CompilationSettings());
+            compiler.addUnit(typeScriptContent, "output.js", false);
+            compiler.typeCheck();
+            compiler.emit(false, function (name) {
+
+            });
+
+            return output;
+        };
+
+        this.onUpdate = function() {
+            this.typeScriptLS.updateScript("temp.ts",this.doc.getValue() , false);
+            var errors = this.serviceShim.languageService.getScriptErrors("temp.ts", 100);
+            var annotations = [];
+            var self = this;
+            this.sender.emit("compiled", this.compile(this.doc.getValue()));
+
+            errors.forEach(function(error){
+                var pos = DocumentPositionUtil.getPosition(self.doc, error.minChar);
+                annotations.push({
+                    row: pos.row,
+                    column: pos.column,
+                    text: error.message,
+                    minChar:error.minChar,
+                    limChar:error.limChar,
+                    type: "error",
+                    raw: error.message
+                });
+            });
+
+            this.sender.emit("compileErrors", annotations);
+        };
+
+    }).call(TypeScriptWorker.prototype);
 
 });define('ace/worker/mirror', ['require', 'exports', 'module' , 'ace/document', 'ace/lib/lang'], function(require, exports, module) {
 
@@ -1206,6 +1215,9 @@ var Document = function(text) {
         this.$split = function(text) {
             return text.split(/\r\n|\r|\n/);
         };
+
+
+ 
     this.$detectNewLine = function(text) {
         var match = text.match(/^.*?(\r\n|\r|\n)/m);
         if (match) {
@@ -1265,6 +1277,7 @@ var Document = function(text) {
             return lines.join(this.getNewLineCharacter());
         }
     };
+
     this.$clipPosition = function(position) {
         var length = this.getLength();
         if (position.row >= length) {
@@ -1543,23 +1556,23 @@ var Range = function(startRow, startColumn, endRow, endColumn) {
                 return 0;
             }
         }
-    } 
+    }; 
     this.comparePoint = function(p) {
         return this.compare(p.row, p.column);
-    } 
+    }; 
     this.containsRange = function(range) {
         return this.comparePoint(range.start) == 0 && this.comparePoint(range.end) == 0;
-    }
+    };
     this.intersects = function(range) {
         var cmp = this.compareRange(range);
         return (cmp == -1 || cmp == 0 || cmp == 1);
-    }
+    };
     this.isEnd = function(row, column) {
         return this.end.row == row && this.end.column == column;
-    } 
+    }; 
     this.isStart = function(row, column) {
         return this.start.row == row && this.start.column == column;
-    } 
+    }; 
     this.setStart = function(row, column) {
         if (typeof row == "object") {
             this.start.column = row.column;
@@ -1568,7 +1581,7 @@ var Range = function(startRow, startColumn, endRow, endColumn) {
             this.start.row = row;
             this.start.column = column;
         }
-    } 
+    }; 
     this.setEnd = function(row, column) {
         if (typeof row == "object") {
             this.end.column = row.column;
@@ -1577,7 +1590,7 @@ var Range = function(startRow, startColumn, endRow, endColumn) {
             this.end.row = row;
             this.end.column = column;
         }
-    } 
+    }; 
     this.inside = function(row, column) {
         if (this.compare(row, column) == 0) {
             if (this.isEnd(row, column) || this.isStart(row, column)) {
@@ -1587,7 +1600,7 @@ var Range = function(startRow, startColumn, endRow, endColumn) {
             }
         }
         return false;
-    } 
+    }; 
     this.insideStart = function(row, column) {
         if (this.compare(row, column) == 0) {
             if (this.isEnd(row, column)) {
@@ -1597,7 +1610,7 @@ var Range = function(startRow, startColumn, endRow, endColumn) {
             }
         }
         return false;
-    } 
+    }; 
     this.insideEnd = function(row, column) {
         if (this.compare(row, column) == 0) {
             if (this.isStart(row, column)) {
@@ -1607,7 +1620,7 @@ var Range = function(startRow, startColumn, endRow, endColumn) {
             }
         }
         return false;
-    }
+    };
     this.compare = function(row, column) {
         if (!this.isMultiLine()) {
             if (row === this.start.row) {
@@ -1635,14 +1648,14 @@ var Range = function(startRow, startColumn, endRow, endColumn) {
         } else {
             return this.compare(row, column);
         }
-    }
+    };
     this.compareEnd = function(row, column) {
         if (this.end.row == row && this.end.column == column) {
             return 1;
         } else {
             return this.compare(row, column);
         }
-    }
+    };
     this.compareInside = function(row, column) {
         if (this.end.row == row && this.end.column == column) {
             return 1;
@@ -1651,7 +1664,7 @@ var Range = function(startRow, startColumn, endRow, endColumn) {
         } else {
             return this.compare(row, column);
         }
-    }
+    };
     this.clipRows = function(firstRow, lastRow) {
         if (this.end.row > lastRow) {
             var end = {
@@ -1856,7 +1869,6 @@ var Anchor = exports.Anchor = function(doc, row, column) {
     this.detach = function() {
         this.document.removeEventListener("change", this.$onChange);
     };
-
     this.$clipPositionToDocument = function(row, column) {
         var pos = {};
     
@@ -1984,8 +1996,6 @@ exports.getMatchOffsets = function(string, regExp) {
 
     return matches;
 };
-
-
 exports.deferredCall = function(fcn) {
 
     var timer = null;
@@ -2017,6 +2027,41 @@ exports.deferredCall = function(fcn) {
     return deferred;
 };
 
+
+exports.delayedCall = function(fcn, defaultTimeout) {
+    var timer = null;
+    var callback = function() {
+        timer = null;
+        fcn();
+    };
+
+    var _self = function(timeout) {
+        timer && clearTimeout(timer);
+        timer = setTimeout(callback, timeout || defaultTimeout);
+    };
+
+    _self.delay = delayed;
+    _self.schedule = function(timeout) {
+        if (timer == null)
+            timer = setTimeout(callback, timeout || 0);
+    };
+
+    _self.call = function() {
+        this.cancel();
+        fcn();
+    };
+
+    _self.cancel = function() {
+        timer && clearTimeout(timer);
+        timer = null;
+    };
+
+    _self.isPending = function() {
+        return timer;
+    };
+
+    return _self;
+};
 });
 (function() {
 

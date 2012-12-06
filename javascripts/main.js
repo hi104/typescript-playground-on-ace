@@ -25,6 +25,7 @@ var selectFileName = "";
 var syncStop = false; //for stop sync on loadfile
 var autoComplete = null;
 var refMarkers = [];
+var errorMarkers =[];
 
 function loadTypeScriptLibrary(){
     var libnames = [
@@ -60,9 +61,62 @@ function startAutoComplete(editor){
 function onUpdateDocument(e){
     if (selectFileName){
         if (!syncStop){
-            syncTypeScriptServiceContent(selectFileName, e);
+            try{
+                syncTypeScriptServiceContent(selectFileName, e);
+                updateMarker(e);
+            }catch(ex){
+
+            }
         }
     }
+}
+
+// TODO check column
+function updateMarker(aceChangeEvent){
+    var data = aceChangeEvent.data;
+    var action = data.action;
+    var range = data.range;
+    var markers = editor.getSession().getMarkers(true);
+    var line_count = 0;
+    var isNewLine = editor.getSession().getDocument().isNewLine;
+
+    if(action == "insertText"){
+        if(isNewLine(data.text)){
+            line_count = 1;
+        }
+    }else if(action == "insertLines"){
+        line_count = data.lines.length;
+
+    }else if (action == "removeText") {
+        if(isNewLine(data.text)){
+            line_count = -1;
+        }
+
+    }else if (action == "removeLines"){
+        line_count = -data.lines.length;
+    }
+
+    if(line_count != 0){
+
+        var markerUpdate = function(id){
+            var marker = markers[id];
+            var row = range.start.row;
+
+            if(line_count > 0){
+                row = +1;
+            }
+
+            if(marker && marker.range.start.row > row ){
+                marker.range.start.row += line_count ;
+                marker.range.end.row += line_count ;
+            }
+        };
+
+        errorMarkers.forEach(markerUpdate);
+        refMarkers.forEach(markerUpdate);
+        editor.onChangeFrontMarker();
+    }
+
 }
 
 //sync LanguageService content and ace editor content
@@ -81,7 +135,7 @@ function syncTypeScriptServiceContent(script, aceChangeEvent){
             return line+ '\n'; //TODO newline hard code
         }).join('');
         editLanguageService(script,new Services.TextEdit(start , start, text));
-        
+
     }else if (action == "removeText") {
         var end = start + data.text.length;
         editLanguageService(script, new Services.TextEdit(start, end, ""));
@@ -140,7 +194,7 @@ function languageServiceIndent(){
             editor.commands.exec("inserttext", editor, {text:" ", times:indent});
         }
 
-        if( cursor.column > wordLen){ 
+        if( cursor.column > wordLen){
             cursor.column += indent;
         }else{
             cursor.column = indent + wordLen;
@@ -263,14 +317,14 @@ $(function(){
         }
     }]);
 
-    // editor.commands.addCommands([{
-    //     name: "indent",
-    //     bindKey: "Tab",
-    //     exec: function(editor) {
-    //         languageServiceIndent(); 
-    //     },
-    //     multiSelectAction: "forEach"
-    // }]);
+    editor.commands.addCommands([{
+        name: "indent",
+        bindKey: "Tab",
+        exec: function(editor) {
+            languageServiceIndent();
+        },
+        multiSelectAction: "forEach"
+    }]);
 
     aceEditorPosition = new EditorPosition(editor);
     typeCompilationService = new CompilationService(editor, serviceShim);
@@ -304,14 +358,29 @@ $(function(){
         outputEditor.getSession().doc.setValue(e.data);
     });
 
+    editor.getSession().on("compileErrors", function(e){
+        var session = editor.getSession();
+        errorMarkers.forEach(function (id){
+            session.removeMarker(id);
+        });
+        e.data.forEach(function(error){
+            var getpos = aceEditorPosition.getAcePositionFromChars;
+            var start = getpos(error.minChar);
+            var end = getpos(error.limChar);
+            var range = new AceRange(start.row, start.column, end.row, end.column);
+            errorMarkers.push(session.addMarker(range, "typescript-error", "text", true));
+        });
+    });
+
     workerOnCreate(function(){//TODO use worker init event
 
         ["typescripts/lib.d.ts"].forEach(function(libname){
             appFileService.readFile(libname, function(content){
-                var params = { 
+                var params = {
                     data: {
-                    name:libname,
-                    content:content.replace(/\r\n?/g,"\n")}
+                        name:libname,
+                        content:content.replace(/\r\n?/g,"\n")
+                    }
                 };
                 editor.getSession().$worker.emit("addLibrary", params );
             });
