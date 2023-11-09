@@ -2,7 +2,7 @@ TypeScript Playground on Ace
 ==========================
 TypeScript Playground build on ace editor
 
-http://hi104.github.com/typescript-playground-on-ace/
+https://hi104.github.io/typescript-playground-on-ace/
 
 See Also
 -----------------
