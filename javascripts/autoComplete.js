@@ -112,7 +112,6 @@ define('autocomplete', ['require', 'exports', 'module', 'ace/keyboard/hash_handl
             self.show();
             var count = self.compilation(editor.getCursorPosition());
             if(!(count > 0)){
-                self.hide();
                 return;
             }
             editor.keyBinding.addKeyboardHandler(self.handler);
